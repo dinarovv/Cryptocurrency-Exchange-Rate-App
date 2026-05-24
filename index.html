@@ -7,33 +7,50 @@
 
   <!--
     ╔══════════════════════════════════════════════════════════════╗
-    ║  CRYPTO TRACKER v1 — Структура проекта                      ║
+    ║  CRYPTO TRACKER — Структура проекта                         ║
     ╠══════════════════════════════════════════════════════════════╣
-    ║  index.html  — разметка + React-компоненты (этот файл)      ║
-    ║  styles.css  — все стили                                     ║
+    ║  index.html  — этот файл: разметка + React-компоненты       ║
+    ║  styles.css  — все стили (подключён ниже через <link>)       ║
     ║  js/config.js — константы и API-запросы                     ║
     ║  js/utils.js  — форматирование чисел и дат                  ║
     ╠══════════════════════════════════════════════════════════════╣
     ║  Как открыть: двойной клик → Chrome / Edge                  ║
+    ║  Установка пакетов не нужна — всё через CDN                 ║
     ╚══════════════════════════════════════════════════════════════╝
   -->
 
+  <!-- Все стили приложения -->
   <link rel="stylesheet" href="styles.css" />
 
+  <!-- React 18 и ReactDOM — UI-библиотека и рендеринг -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+
+  <!-- Babel — компилирует JSX-синтаксис прямо в браузере -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 </head>
 <body>
 
+  <!-- Корневой элемент: React монтирует приложение сюда -->
   <div id="root"></div>
 
-  <!-- config.js и utils.js загружаются первыми: их функции нужны компонентам -->
+  <!--
+    Порядок загрузки скриптов важен!
+    config.js и utils.js загружаются первыми, чтобы их функции
+    (fetchCoins, fmtPrice и др.) были доступны в React-коде ниже.
+  -->
   <script src="js/config.js"></script>
   <script src="js/utils.js"></script>
 
+  <!--
+    React-компоненты.
+    type="text/babel" — Babel перехватывает этот тег и компилирует JSX.
+    Все функции из config.js и utils.js доступны здесь как глобальные переменные.
+  -->
   <script type="text/babel">
 
+    // Деструктурируем хуки React из глобального объекта
+    // (стандарт при подключении React через CDN, а не через npm)
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 
@@ -43,12 +60,12 @@
        Рисует линейный график без сторонних библиотек.
 
        Алгоритм:
-         1. Находим min/max цен → определяем диапазон
+         1. Находим min/max из массива цен → определяем диапазон
          2. xAt(i) и yAt(v) переводят данные в SVG-координаты
-         3. Строим <path> для линии и заливки
-         4. Добавляем подписи осей X и Y
+         3. Строим <path> для линии и заливки под ней
+         4. Добавляем подписи по осям X и Y
     ============================================================ */
-    function LineChart({ prices }) {
+    function LineChart({ prices, currency }) {
       if (!prices || prices.length < 2) {
         return (
           <div className="state-box">
@@ -58,38 +75,45 @@
         );
       }
 
+      // Размеры холста и внутренние отступы для подписей
       const W   = 820, H = 230;
       const PAD = { top: 16, right: 24, bottom: 34, left: 82 };
       const iW  = W - PAD.left - PAD.right;
       const iH  = H - PAD.top  - PAD.bottom;
 
-      const vals  = prices.map(p => p[1]);
-      const times = prices.map(p => p[0]);
+      const vals  = prices.map(p => p[1]);  // только цены
+      const times = prices.map(p => p[0]);  // только временные метки
 
       const minV  = Math.min(...vals);
       const maxV  = Math.max(...vals);
-      const range = maxV - minV || 1;
+      const range = maxV - minV || 1;       // защита от деления на ноль
 
+      // Цвет: зелёный если цена выросла, красный если упала
       const isUp  = vals[vals.length - 1] >= vals[0];
       const color = isUp ? '#10B981' : '#EF4444';
 
+      // Масштабирование: индекс/цена → координата SVG
       const xAt = i => PAD.left + (i / (prices.length - 1)) * iW;
       const yAt = v => PAD.top  + (1 - (v - minV) / range)  * iH;
 
+      // SVG-путь линии: M x0 y0  L x1 y1  L x2 y2 ...
       const linePath = prices
         .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(p[1]).toFixed(1)}`)
         .join(' ');
 
+      // Путь заливки: продолжаем вниз и замыкаем
       const areaPath =
         linePath +
         ` L ${xAt(prices.length - 1).toFixed(1)} ${(PAD.top + iH).toFixed(1)}` +
         ` L ${xAt(0).toFixed(1)} ${(PAD.top + iH).toFixed(1)} Z`;
 
+      // 5 меток по оси Y (горизонтальные линии сетки)
       const yLabels = [0, 0.25, 0.5, 0.75, 1].map(t => ({
         price: minV + t * range,
-        y:     PAD.top + (1 - t) * iH,
+        y: PAD.top + (1 - t) * iH,
       }));
 
+      // 5 меток по оси X (даты)
       const xLabels = [0, 0.25, 0.5, 0.75, 1].map(t => {
         const idx = Math.round(t * (prices.length - 1));
         return { x: xAt(idx), label: fmtDate(times[idx]) };
@@ -110,17 +134,19 @@
               </linearGradient>
             </defs>
 
+            {/* Линии сетки + подписи цен (ось Y) */}
             {yLabels.map((l, i) => (
               <g key={i}>
                 <line x1={PAD.left} y1={l.y} x2={PAD.left + iW} y2={l.y}
                   stroke="#E2E8F0" strokeDasharray="4 4" />
                 <text x={PAD.left - 8} y={l.y + 4}
                   textAnchor="end" fontSize="11" fill="#94A3B8">
-                  {fmtPrice(l.price)}
+                  {fmtPrice(l.price, currency)}
                 </text>
               </g>
             ))}
 
+            {/* Подписи дат (ось X) */}
             {xLabels.map((l, i) => (
               <text key={i} x={l.x} y={H - 6}
                 textAnchor="middle" fontSize="11" fill="#94A3B8">
@@ -131,9 +157,49 @@
             <path d={areaPath} fill="url(#areaGradient)" />
             <path d={linePath} fill="none" stroke={color}
               strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-            <circle cx={lastX} cy={lastY} r="5"  fill={color} />
-            <circle cx={lastX} cy={lastY} r="9"  fill={color} fillOpacity="0.18" />
+            <circle cx={lastX} cy={lastY} r="5" fill={color} />
+            <circle cx={lastX} cy={lastY} r="9" fill={color} fillOpacity="0.18" />
           </svg>
+        </div>
+      );
+    }
+
+
+    /* ============================================================
+       КОМПОНЕНТ: TableHeader — заголовок таблицы с сортировкой
+       ============================================================
+       При клике на колонку:
+         • первый клик → убывание (desc, самые большие сверху)
+         • повторный   → возрастание (asc)
+    ============================================================ */
+    function TableHeader({ sortKey, sortDir, onSort }) {
+      // Иконка рядом с названием колонки
+      function SortIcon({ colKey }) {
+        const active = sortKey === colKey;
+        return (
+          <span className={`sort-icon${active ? ' on' : ''}`}>
+            {active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}
+          </span>
+        );
+      }
+
+      return (
+        <div className="table-header">
+          <span>#</span>
+          <span>Монета</span>
+          <span className={`col-sortable${sortKey === 'current_price' ? ' sorted' : ''}`}
+            onClick={() => onSort('current_price')}>
+            Цена <SortIcon colKey="current_price" />
+          </span>
+          <span className={`col-sortable${sortKey === 'price_change_percentage_24h' ? ' sorted' : ''}`}
+            onClick={() => onSort('price_change_percentage_24h')}>
+            24 ч <SortIcon colKey="price_change_percentage_24h" />
+          </span>
+          <span className={`col-sortable${sortKey === 'market_cap' ? ' sorted' : ''}`}
+            onClick={() => onSort('market_cap')}>
+            Кап. <SortIcon colKey="market_cap" />
+          </span>
+          <span></span>
         </div>
       );
     }
@@ -142,7 +208,7 @@
     /* ============================================================
        КОМПОНЕНТ: CoinRow — строка одной монеты
     ============================================================ */
-    function CoinRow({ coin, rank, selected, onSelect }) {
+    function CoinRow({ coin, rank, selected, favorite, currency, onSelect, onFavorite }) {
       const pct = coin.price_change_percentage_24h;
       const pos = pct != null && pct >= 0;
 
@@ -153,6 +219,13 @@
           <span className="coin-rank">{rank}</span>
 
           <div className="coin-info">
+            {/* Звезда: добавить / убрать из избранного */}
+            <button
+              className={`star-btn${favorite ? ' is-fav' : ''}`}
+              title={favorite ? 'Убрать из избранного' : 'В избранное'}
+              onClick={e => { e.stopPropagation(); onFavorite(coin.id); }}>
+              {favorite ? '★' : '☆'}
+            </button>
             <img src={coin.image} alt={coin.name} className="coin-logo" loading="lazy" />
             <div>
               <div className="coin-name">{coin.name}</div>
@@ -160,13 +233,15 @@
             </div>
           </div>
 
-          <span className="col-right">{fmtPrice(coin.current_price)}</span>
+          {/* Цена в выбранной валюте */}
+          <span className="col-right">{fmtPrice(coin.current_price, currency)}</span>
 
+          {/* Изменение за 24 часа */}
           <span className={`change ${pos ? 'pos' : 'neg'}`}>
             {pos ? '▲' : '▼'} {pct != null ? Math.abs(pct).toFixed(2) + '%' : '—'}
           </span>
 
-          <span className="market-cap">{fmtCap(coin.market_cap)}</span>
+          <span className="market-cap">{fmtCap(coin.market_cap, currency)}</span>
 
           <button className="chart-btn"
             onClick={e => { e.stopPropagation(); onSelect(coin); }}>
@@ -199,35 +274,49 @@
     /* ============================================================
        КОМПОНЕНТ: ChartPanel — панель с графиком монеты
     ============================================================ */
-    function ChartPanel({ coin, onClose }) {
+    function ChartPanel({ coin, currency, onClose }) {
       const [days,         setDays]         = useState(7);
       const [chartPrices,  setChartPrices]  = useState(null);
       const [chartLoading, setChartLoading] = useState(false);
       const [chartError,   setChartError]   = useState(null);
 
+      // Ссылка на корневой <div> панели — нужна для автоскролла
       const panelRef = useRef(null);
 
-      // Автоскролл к панели после монтирования
+      // Плавная прокрутка к панели при её открытии.
+      //
+      // Почему setTimeout, а не scrollIntoView напрямую?
+      // При монтировании компонента браузер ещё не завершил layout —
+      // элемент есть в DOM, но его координаты ещё пересчитываются
+      // (особенно когда список длинный). Задержка 120ms даёт браузеру
+      // время отрисовать панель в финальной позиции.
+      //
+      // Почему window.scrollTo вместо scrollIntoView?
+      // Так мы точно контролируем отступ сверху (80px),
+      // чтобы панель не упиралась в самый верх экрана.
       useEffect(() => {
         const timer = setTimeout(() => {
           if (panelRef.current) {
-            const top = panelRef.current.getBoundingClientRect().top + window.scrollY - 80;
-            window.scrollTo({ top, behavior: 'smooth' });
+            const elementTop = panelRef.current.getBoundingClientRect().top;
+            const scrollTop  = window.scrollY + elementTop - 80; // 80px — отступ сверху
+            window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           }
         }, 120);
-        return () => clearTimeout(timer);
-      }, []);
 
-      // Загружаем данные при смене монеты или периода
+        // Очищаем таймер если компонент размонтировали раньше срока
+        return () => clearTimeout(timer);
+      }, []); // [] — только при монтировании
+
+      // Загружаем данные при смене монеты, валюты или периода
       useEffect(() => {
         setChartLoading(true);
         setChartError(null);
         setChartPrices(null);
-        fetchChart(coin.id, days)
+        fetchChart(coin.id, currency, days)
           .then(data  => setChartPrices(data.prices))
           .catch(err  => setChartError(err.message))
           .finally(() => setChartLoading(false));
-      }, [coin.id, days]);
+      }, [coin.id, currency, days]);
 
       const pct = coin.price_change_percentage_24h;
       const pos = pct != null && pct >= 0;
@@ -239,7 +328,7 @@
               <img src={coin.image} alt={coin.name} />
               <div>
                 <div className="chart-coin-name">{coin.name}</div>
-                <div className="chart-coin-price">{fmtPrice(coin.current_price)}</div>
+                <div className="chart-coin-price">{fmtPrice(coin.current_price, currency)}</div>
                 <span className={`change ${pos ? 'pos' : 'neg'}`} style={{ marginTop: 4 }}>
                   {pos ? '▲' : '▼'} {pct != null ? Math.abs(pct).toFixed(2) + '%' : '—'} за 24ч
                 </span>
@@ -267,7 +356,9 @@
               <p className="hint-msg">{chartError}</p>
             </div>
           )}
-          {chartPrices && !chartLoading && <LineChart prices={chartPrices} />}
+          {chartPrices && !chartLoading && (
+            <LineChart prices={chartPrices} currency={currency} />
+          )}
         </div>
       );
     }
@@ -276,42 +367,128 @@
     /* ============================================================
        КОМПОНЕНТ: App — главный компонент
        ============================================================
-       Состояние:
+       Управляет всем глобальным состоянием:
          coins        — список загруженных монет
-         loading      — флаг загрузки
-         error        — сообщение об ошибке
+         currency     — выбранная валюта (usd/eur/rub)
+         page         — текущая страница пагинации
+         hasMore      — есть ли следующая страница
+         tab          — вкладка ('all' | 'favorites')
          search       — строка поиска
-         selectedCoin — монета для отображения графика
+         sortKey      — поле сортировки (null = по умолчанию)
+         sortDir      — направление ('asc' | 'desc')
+         favorites    — Set с ID избранных монет
+         selectedCoin — монета, для которой открыт график
     ============================================================ */
     function App() {
-      const [coins,        setCoins]        = useState([]);
-      const [loading,      setLoading]      = useState(true);
-      const [error,        setError]        = useState(null);
+      // ── Данные и загрузка ──────────────────────────────────────
+      const [coins,       setCoins]       = useState([]);
+      const [loading,     setLoading]     = useState(true);
+      const [loadingMore, setLoadingMore] = useState(false);
+      const [error,       setError]       = useState(null);
+      const [hasMore,     setHasMore]     = useState(true);
+      const [page,        setPage]        = useState(1);
+
+      // ── Отображение ────────────────────────────────────────────
+      const [currency,     setCurrency]     = useState('usd');
+      const [tab,          setTab]          = useState('all');
       const [search,       setSearch]       = useState('');
+      const [sortKey,      setSortKey]      = useState(null);
+      const [sortDir,      setSortDir]      = useState('desc');
       const [selectedCoin, setSelectedCoin] = useState(null);
 
-      // Загружаем монеты один раз при старте
+      // ── Избранное — читаем из localStorage при старте ──────────
+      // Функция-инициализатор в useState выполняется один раз.
+      const [favorites, setFavorites] = useState(() => {
+        try {
+          const saved = localStorage.getItem(LS_FAVORITES);
+          return saved ? new Set(JSON.parse(saved)) : new Set();
+        } catch {
+          return new Set();
+        }
+      });
+
+      // Сохраняем избранное в localStorage при каждом изменении
       useEffect(() => {
-        fetchCoins()
-          .then(setCoins)
+        localStorage.setItem(LS_FAVORITES, JSON.stringify([...favorites]));
+      }, [favorites]);
+
+      // ── При смене валюты: сброс и загрузка с 1-й страницы ─────
+      useEffect(() => {
+        setCoins([]);
+        setPage(1);
+        setHasMore(true);
+        setLoading(true);
+        setError(null);
+        fetchCoins(currency, 1)
+          .then(data => { setCoins(data); setHasMore(data.length === PER_PAGE); })
           .catch(err => setError(err.message))
           .finally(() => setLoading(false));
+      }, [currency]);
+
+      // ── Пагинация: загрузка следующей страницы ─────────────────
+      function handleLoadMore() {
+        const next = page + 1;
+        setLoadingMore(true);
+        fetchCoins(currency, next)
+          .then(data => {
+            setCoins(prev => [...prev, ...data]); // дописываем к существующим
+            setPage(next);
+            setHasMore(data.length === PER_PAGE);
+          })
+          .catch(err => setError(err.message))
+          .finally(() => setLoadingMore(false));
+      }
+
+      // ── Переключение избранного ────────────────────────────────
+      const toggleFavorite = useCallback(id => {
+        setFavorites(prev => {
+          const next = new Set(prev);
+          next.has(id) ? next.delete(id) : next.add(id);
+          return next;
+        });
       }, []);
 
-      // Фильтрация по поиску
-      const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return coins;
-        return coins.filter(c =>
-          c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q)
-        );
-      }, [coins, search]);
-
-      // Повторный клик на монету — закрыть график
+      // ── Выбор монеты для графика (повторный клик — закрыть) ────
       const handleSelect = useCallback(coin => {
         setSelectedCoin(prev => prev?.id === coin.id ? null : coin);
       }, []);
 
+      // ── Сортировка ─────────────────────────────────────────────
+      function handleSort(key) {
+        if (sortKey === key) {
+          setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+        } else {
+          setSortKey(key);
+          setSortDir('desc');
+        }
+      }
+
+      // ── Список монет для отображения ──────────────────────────
+      // Порядок: фильтр по вкладке → поиск → сортировка
+      const displayed = useMemo(() => {
+        let result = tab === 'favorites'
+          ? coins.filter(c => favorites.has(c.id))
+          : coins;
+
+        const q = search.trim().toLowerCase();
+        if (q) {
+          result = result.filter(c =>
+            c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q)
+          );
+        }
+
+        if (sortKey) {
+          result = [...result].sort((a, b) => {
+            const av = a[sortKey] ?? -Infinity;
+            const bv = b[sortKey] ?? -Infinity;
+            return sortDir === 'desc' ? bv - av : av - bv;
+          });
+        }
+
+        return result;
+      }, [coins, tab, favorites, search, sortKey, sortDir]);
+
+      // ── Рендер ─────────────────────────────────────────────────
       return (
         <div className="app">
 
@@ -319,9 +496,34 @@
           <div className="header">
             <div className="header-left">
               <h1>🪙 Crypto Tracker</h1>
-              <p>Актуальные курсы · Топ-100 по капитализации</p>
+              <p>Актуальные курсы · Топ монет по капитализации</p>
             </div>
-            <span className="api-badge">CoinGecko API</span>
+            <div className="header-right">
+              {/* Переключатель валюты */}
+              <div className="currency-switcher">
+                {Object.entries(CURRENCIES).map(([key, cur]) => (
+                  <button key={key}
+                    className={`currency-btn${currency === key ? ' active' : ''}`}
+                    onClick={() => { setCurrency(key); setSelectedCoin(null); }}
+                    title={cur.label}>
+                    {cur.flag} {cur.label}
+                  </button>
+                ))}
+              </div>
+              <span className="api-badge">CoinGecko API</span>
+            </div>
+          </div>
+
+          {/* Вкладки */}
+          <div className="tabs">
+            <button className={`tab-btn${tab === 'all' ? ' active' : ''}`}
+              onClick={() => setTab('all')}>
+              Все монеты <span className="tab-count">{coins.length}</span>
+            </button>
+            <button className={`tab-btn${tab === 'favorites' ? ' active' : ''}`}
+              onClick={() => setTab('favorites')}>
+              ⭐ Избранное <span className="tab-count">{favorites.size}</span>
+            </button>
           </div>
 
           {/* Поиск */}
@@ -340,7 +542,8 @@
               <p className="error-msg">Не удалось загрузить данные</p>
               <p className="hint-msg">{error}</p>
               <p className="hint-msg">
-                Возможно, превышен лимит запросов CoinGecko. Обновите страницу.
+                Возможно, превышен лимит запросов CoinGecko (~10–30 в мин.).
+                Подождите и обновите страницу.
               </p>
             </div>
           )}
@@ -348,40 +551,61 @@
           {/* Таблица */}
           {!loading && !error && (
             <div className="table-card">
-              <div className="table-header">
-                <span>#</span>
-                <span>Монета</span>
-                <span style={{ textAlign: 'right' }}>Цена (USD)</span>
-                <span style={{ textAlign: 'right' }}>24 ч</span>
-                <span style={{ textAlign: 'right' }}>Капитализация</span>
-                <span></span>
-              </div>
+              <TableHeader sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
 
-              {filtered.length === 0 ? (
+              {displayed.length === 0 ? (
                 <div className="state-box">
-                  <span className="empty-icon">🔍</span>
-                  <p>По запросу «{search}» ничего не найдено.</p>
+                  <span className="empty-icon">{tab === 'favorites' ? '⭐' : '🔍'}</span>
+                  <p>{tab === 'favorites'
+                    ? 'Нет избранных монет. Нажмите ☆ рядом с монетой.'
+                    : `По запросу «${search}» ничего не найдено.`}
+                  </p>
                 </div>
               ) : (
-                filtered.map(coin => (
+                displayed.map(coin => (
                   <CoinRow key={coin.id} coin={coin}
                     rank={coins.indexOf(coin) + 1}
                     selected={selectedCoin?.id === coin.id}
-                    onSelect={handleSelect} />
+                    favorite={favorites.has(coin.id)}
+                    currency={currency}
+                    onSelect={handleSelect}
+                    onFavorite={toggleFavorite} />
                 ))
+              )}
+
+              {/* Пагинация */}
+              {tab === 'all' && !search && (
+                <div className="load-more-wrap">
+                  <p className="coins-counter">
+                    Загружено: <strong>{coins.length}</strong>
+                    {hasMore ? ' · есть ещё' : ' · все монеты загружены'}
+                  </p>
+                  {hasMore && (
+                    <button className="load-more-btn"
+                      onClick={handleLoadMore} disabled={loadingMore}>
+                      {loadingMore ? 'Загрузка…' : `Загрузить ещё ${PER_PAGE}`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
 
           {/* График */}
           {selectedCoin && (
-            <ChartPanel coin={selectedCoin} onClose={() => setSelectedCoin(null)} />
+            <ChartPanel coin={selectedCoin} currency={currency}
+              onClose={() => setSelectedCoin(null)} />
           )}
 
         </div>
       );
     }
 
+
+    /* ============================================================
+       ТОЧКА ВХОДА
+       Монтируем React-приложение в <div id="root">
+    ============================================================ */
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 
   </script>
