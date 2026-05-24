@@ -1,0 +1,265 @@
+/* ================================================================
+   CRYPTO TRACKER v1 — styles.css
+   ================================================================
+
+   Содержание:
+     1. Сброс и CSS-переменные
+     2. Общий layout
+     3. Шапка
+     4. Поле поиска
+     5. Таблица монет
+     6. Строка монеты
+     7. Панель графика
+     8. Состояния: загрузка, ошибка, пусто
+   ================================================================ */
+
+
+/* ================================================================
+   1. СБРОС И CSS-ПЕРЕМЕННЫЕ
+   ================================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:           #F0F4F8;
+  --card:         #FFFFFF;
+  --bg-subtle:    #FAFBFC;
+  --border:       #E2E8F0;
+  --shadow:       0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --radius:       14px;
+  --accent:       #6366F1;
+  --accent-light: #EEF2FF;
+  --text:         #1E293B;
+  --text-muted:   #64748B;
+  --text-faint:   #94A3B8;
+  --green:        #10B981;
+  --green-bg:     #ECFDF5;
+  --red:          #EF4444;
+  --red-bg:       #FEF2F2;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+
+/* ================================================================
+   2. ОБЩИЙ LAYOUT
+   ================================================================ */
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 36px 16px 60px;
+}
+
+
+/* ================================================================
+   3. ШАПКА
+   ================================================================ */
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.header-left h1 { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+.header-left p  { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+.api-badge {
+  font-size: 12px; font-weight: 600;
+  color: var(--accent); background: var(--accent-light);
+  border-radius: 20px; padding: 4px 12px;
+}
+
+
+/* ================================================================
+   4. ПОЛЕ ПОИСКА
+   ================================================================ */
+
+.search-wrap { position: relative; margin-bottom: 18px; }
+
+.search-icon {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted); pointer-events: none;
+  width: 16px; height: 16px;
+}
+
+.search-input {
+  width: 100%; padding: 13px 16px 13px 44px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--text); font-size: 14px;
+  outline: none; transition: border-color .2s, box-shadow .2s;
+  box-shadow: var(--shadow);
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+
+.search-input::placeholder { color: var(--text-muted); }
+
+
+/* ================================================================
+   5. ТАБЛИЦА МОНЕТ
+   ================================================================ */
+
+.table-card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+
+/*
+  CSS Grid — одна сетка для шапки и всех строк.
+  Колонки: # | Монета | Цена | 24ч | Кап. | Кнопка
+*/
+.table-header,
+.coin-row {
+  display: grid;
+  grid-template-columns: 44px 2.2fr 1fr 100px 1fr 88px;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 10px;
+}
+
+.table-header {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .07em;
+  border-bottom: 1px solid var(--border); background: var(--bg-subtle);
+}
+
+
+/* ================================================================
+   6. СТРОКА МОНЕТЫ
+   ================================================================ */
+
+.coin-row {
+  cursor: pointer; border-bottom: 1px solid var(--border);
+  font-size: 14px; transition: background .12s;
+}
+
+.coin-row:last-child  { border-bottom: none; }
+.coin-row:hover       { background: #F8F9FF; }
+.coin-row.is-selected { background: var(--accent-light); }
+
+.coin-rank { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+
+.coin-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.coin-logo { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+.coin-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.coin-sym  { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; }
+
+.col-right  { text-align: right; font-weight: 600; }
+.market-cap { text-align: right; font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+.change {
+  display: inline-flex; align-items: center; gap: 3px;
+  justify-content: flex-end;
+  font-weight: 700; font-size: 12px;
+  padding: 4px 9px; border-radius: 7px;
+}
+
+.change.pos { color: var(--green); background: var(--green-bg); }
+.change.neg { color: var(--red);   background: var(--red-bg); }
+
+.chart-btn {
+  justify-self: end; padding: 6px 14px; border-radius: 8px;
+  font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--accent); color: var(--accent); background: transparent;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+
+.chart-btn:hover,
+.coin-row.is-selected .chart-btn { background: var(--accent); color: #fff; }
+
+
+/* ================================================================
+   7. ПАНЕЛЬ ГРАФИКА
+   ================================================================ */
+
+.chart-panel {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); margin-top: 18px; padding: 26px;
+  animation: slideDown .2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chart-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px; flex-wrap: wrap; gap: 14px;
+}
+
+.chart-coin-info { display: flex; align-items: center; gap: 12px; }
+.chart-coin-info img { width: 36px; height: 36px; border-radius: 50%; }
+.chart-coin-name  { font-size: 18px; font-weight: 800; }
+.chart-coin-price { font-size: 20px; font-weight: 800; color: var(--accent); margin-top: 2px; }
+
+.chart-controls { display: flex; align-items: center; gap: 10px; }
+.days-switcher  { display: flex; gap: 6px; }
+
+.day-btn {
+  padding: 5px 14px; border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted); background: transparent;
+  cursor: pointer; transition: all .15s;
+}
+
+.day-btn.active             { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.day-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+.close-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 18px; line-height: 1;
+  padding: 6px; border-radius: 8px; transition: background .15s;
+}
+
+.close-btn:hover { background: var(--border); color: var(--text); }
+
+.chart-svg-wrap { width: 100%; overflow: hidden; border-radius: 10px; }
+
+
+/* ================================================================
+   8. СОСТОЯНИЯ: загрузка, ошибка, пустой результат
+   ================================================================ */
+
+.state-box {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 56px 20px; gap: 12px;
+  color: var(--text-muted); font-size: 14px; text-align: center;
+}
+
+.state-box.card { background: var(--card); border-radius: var(--radius); }
+
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg  { color: var(--red); font-weight: 700; font-size: 15px; }
+.hint-msg   { font-size: 12px; color: var(--text-faint); max-width: 380px; line-height: 1.5; }
+.empty-icon { font-size: 36px; }
